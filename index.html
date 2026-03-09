@@ -21,13 +21,24 @@
     <meta property="og:url"         content="https://reformasintegralesrga.com" />
     <meta property="og:type"        content="website" />
     <meta property="og:locale"      content="es_ES" />
-    <meta property="og:image" content="https://reformasintegralesrga.com/images/pintor_profesional.jpeg" />
-    <meta property="og:image:secure_url" content="https://reformasintegralesrga.com/images/pintor_profesional.jpeg" />
+    <!-- Add cache-buster to force social networks to fetch updated image -->
+    <meta property="og:image" content="https://reformasintegralesrga.com/images/pintor_profesional.jpeg?v=2" />
+    <meta property="og:image:secure_url" content="https://reformasintegralesrga.com/images/pintor_profesional.jpeg?v=2" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Pintor profesional de Reformas R.G.A. trabajando en una obra de renovación en Madrid" />
-    <link rel="image_src" href="https://reformasintegralesrga.com/images/pintor_profesional.jpeg" />
+    <link rel="image_src" href="https://reformasintegralesrga.com/images/pintor_profesional.jpeg?v=2" />
 
+    <!-- Preload the preview image to help crawlers and speed up first render -->
+    <link rel="preload" as="image" href="https://reformasintegralesrga.com/images/pintor_profesional.jpeg?v=2">
+
+    <!-- Twitter cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Reformas Integrales en Madrid | Reformas R.G.A." />
+    <meta name="twitter:description" content="Renueva tu hogar, oficina o local con la máxima calidad, eficiencia y más de 35 años de experiencia." />
+    <meta name="twitter:image" content="https://reformasintegralesrga.com/images/pintor_profesional.jpeg?v=2" />
+    <meta name="twitter:image:alt" content="Pintor profesional de Reformas R.G.A. trabajando en una obra de renovación en Madrid" />
 
     <!-- Favicon -->
     <link rel="icon" href="images/favicon.png" type="image/png">
@@ -535,112 +546,140 @@
 <script src="js/BeerSlider.js"></script>
 
 <script>
-    /* ── Beer Slider: init + auto-animación ── */
+    /* Robust Beer Slider init + auto-animación que espera a que BeerSlider marque .beer-ready */
     (function () {
         var el = document.getElementById('ba-slider');
         if (!el) return;
 
-        // Inicializar Beer Slider
+        // Inicializar Beer Slider (crea internamente el <input type=range> y el handle)
         new BeerSlider(el);
 
-        // Buscar el input range que Beer Slider crea internamente
-        var range = el.querySelector('input[type="range"]');
-        if (!range) return;
-
-        // ── Auto-sweep: la barra se mueve sola ──
-        var duration = 4000;       // ms de ida
-        var min = 10, max = 90;    // rango del recorrido
-        var direction = -1;        // empieza yendo hacia la izquierda (revela "después")
-        var current = 50;
-        var animId = null;
-        var lastTime = null;
-        var paused = false;
-
-        function step(timestamp) {
-            if (!lastTime) lastTime = timestamp;
-            var delta = timestamp - lastTime;
-            lastTime = timestamp;
-
-            var speed = (max - min) / duration * delta;
-            current += speed * direction;
-
-            if (current <= min) { current = min; direction = 1; }
-            if (current >= max) { current = max; direction = -1; }
-
-            range.value = current;
-            range.dispatchEvent(new Event('input', { bubbles: true }));
-
-            animId = requestAnimationFrame(step);
+        // Esperar a que BeerSlider indique que está listo (añade clase .beer-ready)
+        function waitForReady(cb, timeout) {
+            timeout = timeout || 5000; // ms
+            var waited = 0;
+            var interval = 100;
+            var timer = setInterval(function () {
+                if (el.classList.contains('beer-ready')) {
+                    clearInterval(timer);
+                    cb();
+                }
+                waited += interval;
+                if (waited >= timeout) {
+                    clearInterval(timer);
+                    // Fallback: intentar de todos modos
+                    cb();
+                }
+            }, interval);
         }
 
-        // Pausar al interactuar manualmente
-        function onUserTouch() {
-            paused = true;
-            if (animId) { cancelAnimationFrame(animId); animId = null; }
-            // Reanudar después de 3s de inactividad
-            clearTimeout(el._resumeTimer);
-            el._resumeTimer = setTimeout(function () {
-                paused = false;
-                current = parseFloat(range.value);
-                lastTime = null;
-                animId = requestAnimationFrame(step);
-            }, 3000);
-        }
+        waitForReady(function () {
+            var range = el.querySelector('input[type="range"]');
+            if (!range) return; // nada que hacer
 
-        range.addEventListener('mousedown', onUserTouch);
-        range.addEventListener('touchstart', onUserTouch, { passive: true });
+            var duration = 4000;
+            var min = 15, max = 85;
+            var direction = -1;
+            var current = parseFloat(range.value) || 50;
+            var animId = null;
+            var lastTime = null;
+            var paused = false;
 
-        // Solo animar cuando es visible
-        if ('IntersectionObserver' in window) {
-            var obs = new IntersectionObserver(function (entries) {
-                entries.forEach(function (e) {
-                    if (e.isIntersecting && !paused) {
-                        if (!animId) { lastTime = null; animId = requestAnimationFrame(step); }
-                    } else {
-                        if (animId) { cancelAnimationFrame(animId); animId = null; }
-                    }
-                });
-            }, { threshold: 0.2 });
-            obs.observe(el);
-        } else {
-            animId = requestAnimationFrame(step);
-        }
+            function step(timestamp) {
+                if (!lastTime) lastTime = timestamp;
+                var delta = timestamp - lastTime;
+                lastTime = timestamp;
+
+                var speed = (max - min) / duration * delta;
+                current += speed * direction;
+
+                if (current <= min) { current = min; direction = 1; }
+                if (current >= max) { current = max; direction = -1; }
+
+                range.value = current;
+                range.dispatchEvent(new Event('input', { bubbles: true }));
+
+                if (!paused) animId = requestAnimationFrame(step);
+            }
+
+            function startAnim() {
+                if (!animId && !paused) { lastTime = null; animId = requestAnimationFrame(step); }
+            }
+            function stopAnim() { if (animId) { cancelAnimationFrame(animId); animId = null; } }
+
+            function onUserTouch() {
+                paused = true; stopAnim();
+                clearTimeout(el._resumeTimer);
+                el._resumeTimer = setTimeout(function () {
+                    paused = false; current = parseFloat(range.value) || 50; startAnim();
+                }, 3000);
+            }
+
+            range.addEventListener('mousedown', onUserTouch);
+            range.addEventListener('touchstart', onUserTouch, { passive: true });
+
+            // --- Mobile / touch fallback: drag or tap anywhere on the slider to control the range ---
+            function setRangeFromClientX(clientX) {
+                var rect = el.getBoundingClientRect();
+                var x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+                var pct = (x / rect.width) * 100;
+                range.value = pct;
+                range.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            el.addEventListener('touchstart', function (e) {
+                if (e.touches && e.touches.length) {
+                    onUserTouch();
+                    setRangeFromClientX(e.touches[0].clientX);
+                    // prevent page scroll while interacting
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            el.addEventListener('touchmove', function (e) {
+                if (e.touches && e.touches.length) {
+                    setRangeFromClientX(e.touches[0].clientX);
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            el.addEventListener('click', function (e) {
+                onUserTouch();
+                setRangeFromClientX(e.clientX);
+            });
+
+            // Iniciar sólo si el slider está en pantalla
+            if ('IntersectionObserver' in window) {
+                var obs = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (e) {
+                        if (e.isIntersecting) startAnim(); else stopAnim();
+                    });
+                }, { threshold: 0.25 });
+                obs.observe(el);
+            } else {
+                startAnim();
+            }
+        }, 7000);
     })();
 
-    /* ── Swiper — Testimonios ── */
+    /* Swiper init (testimonios y galería) */
     new Swiper('.testimonials', {
         loop: true,
         pagination: { el: '.swiper-pagination', clickable: true },
         autoplay: { delay: 6000 },
-        a11y: {
-            prevSlideMessage: 'Opinión anterior',
-            nextSlideMessage: 'Siguiente opinión'
-        }
+        a11y: { prevSlideMessage: 'Opinión anterior', nextSlideMessage: 'Siguiente opinión' }
     });
 
-    /* ── Swiper — Galería de trabajos ──
-       SWIPER 4.x: breakpoint keys = max-width */
     new Swiper('.gallery-swiper', {
         loop: true,
         autoplay: { delay: 3000, disableOnInteraction: false },
         speed: 600,
         slidesPerView: 4,
         spaceBetween: 20,
-        navigation: {
-            nextEl: '.gallery-btn-next',
-            prevEl: '.gallery-btn-prev'
-        },
+        navigation: { nextEl: '.gallery-btn-next', prevEl: '.gallery-btn-prev' },
         pagination: { el: '.gallery-pagination', clickable: true },
-        breakpoints: {
-            575:  { slidesPerView: 2, spaceBetween: 10 },
-            767:  { slidesPerView: 2, spaceBetween: 14 },
-            991:  { slidesPerView: 3, spaceBetween: 16 },
-            1199: { slidesPerView: 3, spaceBetween: 18 }
-        },
-        a11y: {
-            prevSlideMessage: 'Proyecto anterior',
-            nextSlideMessage: 'Siguiente proyecto'
-        }
+        breakpoints: { 575: { slidesPerView: 2, spaceBetween: 10 }, 767: { slidesPerView: 2, spaceBetween: 14 }, 991: { slidesPerView:3, spaceBetween:16 }, 1199: { slidesPerView:3, spaceBetween:18 } },
+        a11y: { prevSlideMessage: 'Proyecto anterior', nextSlideMessage: 'Siguiente proyecto' }
     });
 </script>
 
